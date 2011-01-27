@@ -1,0 +1,1330 @@
+<html>
+<head>
+<meta name="generator" content="GNU Emacs 20.7.1">
+<meta http-equiv="Content-Type" name="Description" content="Fair Rent Calculator">
+<meta http-equiv="Content-Type" name="Author" content="K. Ramanraj">
+<title>Fair Rent Calculator</title>
+<body bgcolor="#FFFFFF" text="#000000">
+
+<script language="javascript">
+<!--
+///////////////////////////////////////////////////////////////////////
+// --------------------------------------------------------------------
+// AUTHOR:        K. RAMANRAJ
+// DATE CREATED:  November 23, 2001
+//      EDITED :  September 19, 2004; October 26, 2005
+// --------------------------------------------------------------------
+//
+// A JavaScript to aid FIXATION OF FAIR RENT UNDER SECTION 4 OF THE 
+// TAMIL NADU BUILDINGS (LEASE AND RENT CONTROL) ACT 1960
+// 
+///////////////////////////////////////////////////////////////////////
+// GENERAL
+var blank = 0; 				// FLAG: SET TO 1 IF CALCULATION FAILS
+var i = 0;				// COUNTER
+var msg = "";				// MESSAGES
+var nl = "\r\n";			// NEW LINE
+var rs = "Rs. ";			// CURRENCY PREFIX
+var maxCur=9999999999;                  // MAXIMUM CURRENCY SPECIFIABLE
+
+// CONSTANTS
+var maxAmenNbRate = 15;			// MAXIMUM PERMISSIBLE AMENITIES FOR RESIDENTIAL BUILDINGS
+var maxAmenNbrRate = 25;		// MAXIMUM PERMISSIBLE AMENITIES FOR NON RESIDENTIAL BUILDINGS
+var maxBasicAmen = 30;                  // MAXIMUM PERMISSIBLE ADDITION TOWARDS BASIC AMENITIES
+var minDep = 10;			// MINIMUM DEPRECIATION RATE PRESCRIBED
+
+// NATURE AND TYPE OF BUILDING
+var bNature=0;				// NATURE OF USING THE BUILDING: RESIDENTIAL OR NON-RESIDENTAIL
+var bNatureText = "";
+var bType=0;				// TYPE OF BUILDING: CLASS I, II, III OR IV
+var nTypeText = "";
+
+// MARKET VALUE OF SITE
+var totalExtent=0;			// ALL VARS SELF EXPLANATORY READ IN CONTEXT OF SECTION 4
+var totalPlinth=0;
+var fairPlinth=0;
+var siteRatePerUnit=0;
+var siteRateUnit="";
+var siteRatePerSqFt=0;
+var maxCostOfSite=0;
+
+// COST OF CONSTRUCTION
+var constCostPerUnit=0;
+var floorAreaOccupied=0;
+var averageConstCost=0;
+var constAge=0;
+var appor="";
+var apporFraction=0;
+var depValue=0;
+var depAmount=0;
+var depRate=0;
+var numPart=0;
+
+var amenWater=0;
+var amenSanitary=0;
+var amenElectricity=0;
+var amenBasicPercentage = 0;
+
+// COST OF AMENITIES
+var amenTotal=0;
+var fairAmenCost=0;
+var maxAmen=0;
+var costOfSite=0;
+var costOfConstruction=0;
+var costOfAmenities=0;
+
+var costOfBuilding=0;
+var fairCostOfBuilding=0;
+
+var fairCostOfSite=0;
+var fairCostOfConstruction=0;
+var fairCostOfAmenities=0;
+
+// FAIR RENT
+var fairAnnualRent=0;
+var fairMonthlyRent=0;
+var amenGroundCost = 0;
+
+// REPORT
+var reasons = new Array(100);
+var lPart="";
+var rPart="";
+var lPartLen=50;
+var rPartLen=20;
+
+// LIST OF AMENITY NAMES
+var amenName = new Array(19);
+amenName[1] = "Air Conditioner";
+amenName[2] = "Lift";
+amenName[3] = "Water-cooler";
+amenName[4] = "Electrical heater";
+amenName[5] = "Frigidaire";
+amenName[6] = "Mosaic flooring";
+amenName[7] = "Side dadoos";
+amenName[8] = "Compound walls";
+amenName[9] = "Garden";
+amenName[10] = "Over-head tank";
+amenName[11] = "Electric pump";
+amenName[12] = "Playground";
+amenName[13] = "Badminton Court";
+amenName[14] = "Sun-breakers";
+amenName[15] = "Amenity u/s. 4(4)";
+amenName[16] = "Usufructs";
+amenName[17] = "Special Architecture";
+amenName[18] = "Others";
+////////////////////////////////////////////////////////////
+function getSiteValue(){
+  //alert("starting getSiveValue()...");
+	// MARKET VALUE OF SITE
+	
+	// NATURE OF BUILDING
+	i = document.frmFrc.bNature.selectedIndex;
+	bNature = document.frmFrc.bNature.options[i].value;	
+	bNatureText = document.frmFrc.bNature.options[i].text;	
+	
+	// TYPE OF BUILDING
+	i = document.frmFrc.bType.selectedIndex;
+	bType = document.frmFrc.bType.options[i].value;
+	bTypeText = document.frmFrc.bType.options[i].text;
+	
+	// SITE VALUE
+	totalExtent = convertToSqFt(document.frmFrc.siteExtent.value);
+	siteRatePerSqFt = convertRateToSqFt(document.frmFrc.siteCostPerUnit.value);
+	totalPlinth = parseFloat(document.frmFrc.sitePlinth.value);
+	fairPlinth = totalPlinth + (totalPlinth / 2);
+	maxCostOfSite = fairPlinth * siteRatePerSqFt;
+	costOfSite = totalExtent * siteRatePerSqFt;
+	fairCostOfSite = costOfSite;
+	
+	// APPORTIONMENT, IF APPROPRIATE
+	appor = document.frmFrc.appor.value;
+	if (appor==""){
+		appor = "1/1";
+	}
+	apporFraction = eval(appor);
+		if (appor != 1){
+		lPart = "Apportionment given"; rPart = document.frmFrc.appor.value; addHead(14);		
+	}					 
+	
+	// TREAT EXCESS LAND, IF ANY, AS AN AMENITY
+	if (costOfSite > maxCostOfSite){
+	  
+		fairCostOfSite = maxCostOfSite;
+		amenGroundCost = costOfSite - fairCostOfSite;
+		fairCostOfSite = fairCostOfSite * apporFraction;
+		amenGroundCost = amenGroundCost * apporFraction;
+		amenGroundCost = roundCur(amenGroundCost);
+		document.frmFrc.amen[14].value = amenGroundCost;	
+		lPart = "Thus, market value of site under Section 4"; rPart=rs + fairCostOfSite; addReason(17);
+		if (amenGroundCost > 0){
+			lPart = "Value of site portion treated as amenity"; rPart=rs + amenGroundCost; addHead(15);
+		}
+		lPart = "Apportioned share of tenant in site"; rPart =rs + fairCostOfSite; addHead(16);
+		} else {
+		
+		
+		fairCostOfSite = fairCostOfSite * apporFraction;
+		fairCostOfSite = roundCur(fairCostOfSite);
+		document.frmFrc.amen[14].value = "0.00";
+		if (appor < 1){
+			lPart = "Apportioned share of tenant in site"; rPart =rs + fairCostOfSite; addHead(16);
+		}			 
+	}
+	// GENERATE REPORT
+	
+	lPart = "Nature of the building"; 	rPart = bNatureText; 	addHead(1);	
+	lPart = "Type of building construction"; rPart = bTypeText; addHead(2);
+	reasons[3] = " ";
+	reasons[10] = "Market value of Site:-" + nl;
+	lPart = "Total extent of site"; rPart = totalExtent + " sq.ft."; addHead(11);
+	lPart = "Market rate of site per sq.ft.";	rPart = "Rs. " + siteRatePerSqFt; addHead(12);
+	lPart = "Market value of the site";	rPart = "Rs. " + costOfSite; addHead(13);
+	lPart = "Thus, market value of site under Section 4"; rPart=rs + fairCostOfSite; addHead(17);
+	reasons[19] = " ";
+	//alert("done getSiveValue()");
+}
+
+///////////////////////////////////////////////////////////////////////
+function getConstValue(){
+	// COST OF CONSTRUCTION
+	getPortions();      // IF PORTIONS ARE GIVEN, FIND TOTAL AREA AND AVERAGE COST OF CONSTRUCTION
+	reasons[20]= "Cost of Construction:-" + nl;
+	constAge = parseFloat(document.frmFrc.constAge.value);
+	if (constAge <= 5){
+		reasons[3]="Note: New buildings aged less than five years are exempted from the provisions of the Act under Section 30." + nl;
+	}
+	
+	floorAreaOccupied = parseFloat(document.frmFrc.floorAreaOccupied.value);
+	constCostPerUnit = parseFloat(document.frmFrc.constCostPerUnit.value);
+	lPart = "Floor area occupied by the tenant"; rPart = floorAreaOccupied + " sq.ft."; addHead(21);
+	lPart = "Cost of Construction of building per sq.ft."; rPart = rs + constCostPerUnit; addHead(22);
+	var tmpVal = formatCur(constCostPerUnit);	
+	constCost = floorAreaOccupied * constCostPerUnit;
+	constCost = roundCur(constCost);
+	lPart = "Actual cost of construction of building"; rPart = rs + formatCur(constCost); addHead(23);
+	lPart = "Age of the building in years"; rPart = constAge; addHead(24);
+	lPart = "Depreciation rate per annum for " + bTypeText + " building"; rPart = bType + " %"; addHead(25);
+
+	// ADD TOWARDS PROVISION OF BASIC AMENITIES
+	amenBasicPercentage = parseFloat(document.frmFrc.amenBasicPercentage.value);
+	if (amenBasicPercentage > 30){
+		amenBasicPercentage = 30;
+		alert("The maximum allowance for basic amentities is 30%");
+	}	
+	var tmpCost =  (constCost * amenBasicPercentage / 100);
+	constCost = constCost + tmpCost;
+	//alert("ConstCost" + constCost);
+
+	// COMPUTE DEPRECIATION
+	depValue = ( 100 - bType ) / 100;
+	// depValue = Math.pow(depValue, constAge);  // BUG IN 64BIT MOZ -> Work around
+        var depValuePow = depValue;
+        // work around start
+        for (i=1; i<= constAge; i++){
+            depValue = depValue * depValuePow;
+        }
+        // work around end
+	depValue = constCost * depValue;
+	depValue = roundCur(depValue);
+	//alert(constCost-depValue);
+	lPart = "Depreciated Value of the Building"; rPart = rs + depValue; addHead(26);
+	
+	depAmount = constCost - depValue;
+	depRate = depAmount / constCost  * 100;
+	depRate = roundCur(depRate);
+	lPart = "Percentage of depreciation in value"; rPart= depRate + " %"; addHead(27);
+	
+
+	if (depRate < minDep){
+		var minDepAmount = constCost * 10 / 100;
+		depValue = constCost - minDepAmount;
+		depValue = roundCur(depValue);
+		msg = "Since depreciation rate of the building is less than 10% at " + depRate + ", depreciation is calculated at 10% and fixed at Rs. " + depValue;
+		reasons[28] = msg;
+	} else {
+		reasons[28] = "Since the building has depreciated more than 10% in value at " + depRate + " %, the actual depreciated value of the building is taken for computing fair rent.";
+	}
+
+	fairCostOfConstruction = depValue;
+	
+	fairCostOfConstruction = roundCur(fairCostOfConstruction);
+	lPart = "Cost of construction under Section 4";  rPart=rs + fairCostOfConstruction; addHead(29);
+	reasons[30] = " ";
+}
+
+///////////////////////////////////////////////////////////////////////	
+function getAmenTotal(){
+  // TOTAL VALUE OF AMENITIES
+  reasons[50]="Value of Amenities:-" + nl;
+  
+  var tmpCount=0;
+  var tmpAmen=0;
+  var iVal=0;
+  for (var i = 0; i < document.frmFrc.amen.length; i++) {
+      var tmpAmen = document.frmFrc.amen[i].value ;
+      tmpAmen = parseFloat(tmpAmen);
+      if (tmpAmen > 0){
+      	tmpCount = i + 51;
+      	iVal = i + 1;
+      	lPart = amenName[iVal]; rPart = tmpAmen; addHead(tmpCount);
+      	amenTotal = amenTotal + tmpAmen; 
+      }     
+  }
+  
+  if (amenTotal > 0){
+  	reasons[51] = "List of Amenities Provided:";
+  	lPart = "Total cost of amenities"; rPart = rs + amenTotal; addHead(70);
+  }
+  //alert(amenTotal);
+  fairCostOfAmenities = amenTotal;
+	maxAmen = fairCostOfSite + fairCostOfConstruction;
+	
+	if (bNature == 9){
+		maxAmen = maxAmen * (maxAmenNbRate / 100);
+	} else {
+		maxAmen = maxAmen * (maxAmenNbrRate / 100);
+	}
+	maxAmen = roundCur(maxAmen);
+	lPart = "Maximum value of amenities allowed"; rPart = rs + maxAmen; addHead(71);
+	if (amenTotal > maxAmen){
+		fairCostOfAmenities = maxAmen;
+		reasons[73] = "Since total cost of amenites exceeds maximum permissible";
+		reasons[74] = "limit, the value of amenities is fixed at " + rs + maxAmen;
+	} else {
+		reasons[73] = "Since total cost of amenities is less than the maximum";
+		reasons[74] = "permissible limit, the actual value of amenites is taken.";
+	}
+	fairCostOfAmenities = roundCur(fairCostOfAmenities);
+	lPart = "Hence, the cost of amenities under Section 4 is"; rPart = rs +  fairCostOfAmenities;
+	addHead(79);
+	reasons[80] = " ";
+	if (fairCostOfAmenities==0){
+		//NO NEED TO GIVE REASONS IF NO AMENITIES ARE PROVIDED
+		for (i = 50; i<81; i++){
+			reasons[i] = "";
+		}
+	}
+	
+}
+
+///////////////////////////////////////////////////////////////////////
+function getFairRent(){
+	// CALCULATE FAIR RENT FOR BUILDING
+	var grossBuildingCost = fairCostOfSite + fairCostOfConstruction + fairCostOfAmenities;
+	reasons[90] = "Fair Rent Calculation:-" + nl;
+	msg = "The Gross Cost of the building under Section 4:=" + nl;
+	msg = msg + "=> " + rs + fairCostOfSite + " + " + rs + fairCostOfConstruction + " + " + rs + fairCostOfAmenities + nl;
+	msg =  msg + "=> " + rs + grossBuildingCost + nl;
+	reasons[91] = msg
+	fairAnnualRent = grossBuildingCost * bNature / 100;
+	fairAnnualRent = roundCur(fairAnnualRent);
+	fairMonthlyRent = fairAnnualRent / 12;
+	fairMonthlyRent = roundCur(fairMonthlyRent);
+	
+	msg = "Annual Fair Rent for the Building:=" + nl; 
+	msg = msg + "=> (" + grossBuildingCost + " x " + bNature + ") / " + "100" + nl;
+	msg = msg + "=> " + rs + fairAnnualRent + nl;
+	reasons[92] = msg;
+	msg = "Monthly fair rent for the " + bNatureText + ":=" + nl;
+	msg = msg + "=> " + fairAnnualRent + " / 12" + nl;
+	msg = msg + "=> " + rs + fairMonthlyRent + nl;
+	reasons[93] = msg;
+	reasons[0] = "Monthly Fair Rent for the " + bNatureText + " is " + rs + formatCur(fairMonthlyRent) + nl + nl + "*** Memo of Calculation ***" + nl;
+	reasons[94] = "Therefore, the Monthly Fair Rent for the " + bNatureText + " is " + rs + formatCur(fairMonthlyRent)
+	
+}
+
+///////////////////////////////////////////////////////////////////////
+function doCalculation(){
+
+  // FAIR RENT CALCULATOR
+  // RESET VARIABLES
+  //alert("starting doCalcuation() ...");
+	resetVars();
+
+	doCheck();
+	// EXIT ON ERROR
+	if (blank==1){
+		exit;
+	}
+
+	getSiteValue();
+	getConstValue();
+	getAmenTotal();
+	getFairRent();
+	giveResult();
+	//alert("doCalcuation() done");
+}
+
+///////////////////////////////////////////////////////////////////////
+function resetVars(){
+	//alert("starting resetVars() ...");
+	blank=0;
+	// COMPUTING MARKET VALUE OF SITE
+	totalExtent=0;
+	totalPlinth=0;
+	halfPlinth=0;
+	fairPlinth=0;
+	siteRatePerSqFt=0;
+	siteRatePerUnit=0;
+	siteRateUnit="";
+
+	// COMPUTING COST OF CONSTRUCTION
+	constRatePerSqFt=0;
+	floorAreaOccupied=0;
+	constAge=0;
+	appor="";
+	apporFraction=0;
+	// COST OF AMENITIES
+	amenCost=0;
+	amenTotal=0;
+  fairAmenCost=0;
+  maxAmen=0;
+	costOfSite=0;
+	costOfConstruction=0;
+	costOfAmenities=0;
+	amenWater=0;
+	amenSanitary=0;
+	amenElectricity=0;
+	amenBasicPercentage=0;
+	costOfBuilding=0;
+	fairCostOfBuilding=0;
+	depValue=0;
+	constCostPerUnit=0;
+	fairCostOfSite=0;
+	fairCostOfConstruction=0;
+	fairCostOfAmenities=0;
+
+	fairAnnualRent=0;
+	fairMonthlyRent=0;
+	amenGroundCost = 0;
+	
+	document.frmFrc.amen[14].value = 0;
+
+	
+	for (i = 1; i < 101; i++){		
+		reasons[i] = "";	
+	} 
+	//alert("done resetVars()");
+}
+
+///////////////////////////////////////////////////////////////////////
+function getPortions(){
+  // IF PORTIONS ARE GIVEN GET TOTAL AREA AND AVERAGE COST OF CONSTRUCTION
+  floorAreaOccupied=0;
+  constCostPerUnit=0;
+  costOfConstruction=0;
+  var tmpPorCount=0;
+  for (i = 0; i < document.frmFrc.txtFloorArea.length; i++) {
+      var tmpFloorArea = document.frmFrc.txtFloorArea[i].value;
+      var tmpFloorCost = document.frmFrc.txtFloorCost[i].value;
+      var tmpConstCost = 0;
+      tmpFloorArea = parseFloat(tmpFloorArea);
+      tmpFloorCost = parseFloat(tmpFloorCost);
+      if (tmpFloorArea > 0){
+        tmpPorCount++;
+      	//tmpCount = i + 51;
+      	//iVal = i + 1;
+      	//lPart = amenName[iVal]; rPart = tmpAmen; addHead(tmpCount);
+      	floorAreaOccupied = floorAreaOccupied + tmpFloorArea;
+	tmpConstCost = tmpFloorArea * tmpFloorCost;
+	costOfConstruction = costOfConstruction + tmpConstCost;
+	 
+      }     
+  }
+  if ((tmpPorCount > 0) && (costOfConstruction >0)){
+    averageConstCost = costOfConstruction / floorAreaOccupied;
+    averageConstCost = roundCur(averageConstCost);
+    document.frmFrc.floorAreaOccupied.value = floorAreaOccupied;
+    document.frmFrc.constCostPerUnit.value = averageConstCost;
+  }
+}
+function giveResult(){
+
+	showReasons();
+	//TODO - WRITE TO SECONDARY WINDOW SO THAT USER CAN SAVE REPORT
+	//open("frc_report.html", "Window1", "toolbar,scrollbars=yes,resize,screenY=200,screenX=100,alwaysRaised=yes");
+	//Window1.focus();
+	//Window1.open();
+	//Window1.document.write("<P>This does not work! You may try fixing it.<BR>");
+	//Window1.close();
+	
+}
+
+function modifyBasicAmenRate(amenType){
+	// MODIFY PERCENTAGE ACCORDING TO BASIC AMENITIES PROVIDED
+	amenBasicPercentage = document.frmFrc.amenBasicPercentage.value;
+	if (amenBasicPercentage == ""){
+		amenBasicPercentage = 0;
+	} else {
+		amenBasicPercentage = parseFloat(amenBasicPercentage);
+	}
+	if (amenType==true){
+		
+		amenBasicPercentage = amenBasicPercentage + 5;
+		if (amenBasicPercentage > 30 ){
+			amenBasicPercentage = 30;
+		}
+		} else {
+		amenBasicPercentage = amenBasicPercentage - 5;
+		if (amenBasicPercentage < 0){
+			amenBasicPercentage = 0;
+		}
+	}
+	document.frmFrc.amenBasicPercentage.value = amenBasicPercentage;
+}
+
+function getTextUnit(txt){
+	// GETS WHAT UNIT IS USED IN TEXT
+	var txtB = ""
+	var intPos = 0;
+	var txtUnit = "";
+	txtB = txt.toUpperCase();	
+	
+	intPos = txtB.indexOf("G");
+	if (intPos != -1){
+		txtUnit = "grounds";
+	}
+
+	intPos = txtB.indexOf("M");
+	if (intPos != -1){
+		txtUnit = "sqm";
+	}
+	
+	intPos = txtB.indexOf("Y");
+	if (intPos != -1){
+		txtUnit = "sqyards";
+	}
+	
+	intPos = txtB.indexOf("CENT");
+	if (intPos != -1){
+		txtUnit = "cents";
+	}
+
+	intPos = txtB.indexOf("ACRE");
+	if (intPos != -1){
+		txtUnit = "acres";
+	}
+
+	if (txtUnit == ""){
+		txtUnit = "sqft";
+	}
+	var p = / /
+	var gsf = new Array();
+	gsf = txt.split(p);
+	gPart = gsf[0];			
+	gPart = stripCharsNotInBag(gPart, "1234567890.");
+	numPart = parseFloat(gPart);
+	var test = isNumber(numPart);
+	if (test == false){
+	  numPart=0;
+	} else {		
+		numPart = roundCur(numPart);
+	}
+	return txtUnit;
+}
+
+function convertRateToSqFt(txt){
+	// CONVERTS RATES FROM GROUNDS, SQ.M. CENTS TO SQ.FT
+	siteRateUnit = "";
+	var txtUnit = getTextUnit(txt);
+	txt = stripCharsNotInBag(txt, "1234567890");
+	
+	siteRatePerUnit = parseFloat(txt);
+	switch (txtUnit){
+		case "sqft":
+			siteRatePerSqFt = siteRatePerUnit;
+			break;
+		case "sqyards":
+			siteRatePerSqFt = siteRatePerUnit / 9;
+			break;
+		case "sqm":
+			siteRatePerSqFt = siteRatePerUnit / 10.76;
+			break;
+		case "grounds":
+			siteRatePerSqFt = siteRatePerUnit / 2400;
+			break;
+		case "acres":
+			siteRatePerSqFt = siteRatePerUnit / 43560;
+			break;
+		case "cents":
+			siteRatePerSqFt = siteRatePerUnit / 435.6;
+			break;
+	}
+	//alert(siteRatePerSqFt);
+	return siteRatePerSqFt;
+}
+
+function convertToSqFt(txt){
+	// CONVERTS AREA FROM GROUNDS, ACRES, CENTS, Sq M, Sq YARDS TO Sq FEET
+	var gPart = "";
+	var fPart = "";
+	var tmpTxt = "";
+	var resultSqFt = 0;
+	
+	txt = txt.toUpperCase()
+	tmpText = stripCharsNotInBag(txt, "1234567890");
+	if (tmpText == ""){
+		tmpText = "0";
+	}
+	var txtUnit = getTextUnit(txt);
+	if (txtUnit=="grounds"){
+			var p = /G/
+			var gsf = new Array();
+			gsf = txt.split(p);
+			gPart = gsf[0];
+			fPart = gsf[1];			
+			gPart = stripCharsNotInBag(gPart, "1234567890.");
+			fPart = stripCharsNotInBag(fPart, "1234567890");
+			if (gPart == ""){
+				gPart = "0";
+			}
+			if (fPart == ""){
+				fPart = "0";
+			}
+			resultSqFt = parseFloat(gPart) * 2400;			
+			resultSqFt = parseFloat(fPart) + resultSqFt;
+			return resultSqFt;	
+	}
+	switch (txtUnit){
+		case "sqft":
+			resultSqFt = numPart;
+			break;
+		case "sqyards":
+			resultSqFt = numPart * 9;
+			break;
+		case "sqm":
+			resultSqFt = numPart * 10.76;
+			break;
+		case "acres":
+			resultSqFt = numPart * 43560;
+			break;
+		case "cents":
+			resultSqFt = numPart * 435.6;
+			break;
+	}
+	resultSqFt = roundCur(resultSqFt);
+	return resultSqFt;
+}
+function stripCharsNotInBag (s, bag){   
+		var i;
+    var returnString = "";
+
+    // Search through string's characters one by one.
+    // If character is in bag, append to returnString.
+
+    for (i = 0; i < s.length; i++)
+    {   
+        // Check that current character isn't whitespace.
+        var c = s.charAt(i);
+        if (bag.indexOf(c) != -1) returnString += c;
+    }
+
+    return returnString;
+}
+
+function round(x){
+	// ROUND x TO NEAREST INTEGER
+	x = Math.round(x)
+	return x;
+}
+
+function roundCur(x){
+	// ROUND x TO 2 decimal places
+	x = x * 100;
+	x = Math.round(x)
+	x = x / 100;
+	return x;
+}
+
+function formatCur(x){
+	// FORMAT CURRENCY
+	var result_x = "";
+	var test=0;
+	x = roundCur(x);
+	var txt_x = x.toString();	
+	var txt_len = txt_x.length;	
+	var dec_pos = txt_x.indexOf(".");	
+	if (dec_pos == -1){
+		result_x = txt_x + ".00";
+		return result_x;
+	}
+	if (dec_pos == 0){
+		txt_x = "0" + txt_x;		
+	}
+	if (dec_pos == (txt_len-2)){
+			result_x = txt_x + "0";
+		return result_x;
+	}
+	return txt_x;
+}
+
+function isNumber(txt){
+	// CHECKS IF A NUMBER
+	var test = parseFloat(txt);
+	if (isNaN(test)){
+		return false;
+	} else {
+		return true;
+	}
+}
+
+function wrapError(descStr, msgStr){
+	// WRAPS ERROR MESSAGE IN INTELLIGIBLE FORMAT
+	var tmpStr = descStr + " given as \"" + msgStr + "\" is an invalid value.";
+	blank=1;
+	//alert(tmpStr);
+	return tmpStr;
+	
+}
+function doCheck(){
+	// CHECK VALIDITY OF FORM INPUT
+	
+	blank = 0;
+	var test;
+	var tmpVal;
+	reasons[0] = "Calculation failed for the following reasons:" + nl;
+	// TOTAL EXTENT
+	tmpVal = convertToSqFt(document.frmFrc.siteExtent.value);
+	if (tmpVal == 0){
+		reasons[1] = wrapError("Total extent of site ", document.frmFrc.siteExtent.value);
+	}
+	totalExtent = tmpVal;
+	if (totalExtent > maxCur){
+		reasons[1] = reasons[1] + nl + "Total extent exceeds " + maxCur;
+		blank = 1;
+	}
+	
+	// SITE RATE	
+	msg = convertRateToSqFt(document.frmFrc.siteCostPerUnit.value);
+	test = isNumber(msg);
+	if (test == false){
+		reasons[2] = wrapError("Cost of site per unit ", document.frmFrc.siteCostPerUnit.value);
+	}
+	
+	// PLINTH AREA
+	msg = document.frmFrc.sitePlinth.value
+	test = isNumber(msg);
+	if (test == false){
+		reasons[3] = wrapError("Plinth area", msg);		
+		} else {
+		totalPlinth = parseFloat(msg);
+		if (totalPlinth > totalExtent){
+			reasons[3] = reasons[3] + nl + "Plinth area cannot exceed total extent.";
+		}
+		if (totalPlinth > maxCur){
+			reasons[3] = reasons[3] + nl + "Plinth area exceeds " + maxCur;
+		}
+	}
+	
+	// APPORTIONMENT
+	msg = document.frmFrc.appor.value;
+	msg = stripCharsNotInBag (msg, ".1234567890/");	
+	document.frmFrc.appor.value = msg;
+	if (msg==""){
+		msg = "1/1";
+	}	
+	tmpVal = eval(msg);
+	test = isNumber(tmpVal);
+	if (test == false){
+		reasons[4] = wrapError("Apportionment ", document.frmFrc.appor.value);
+	}
+	if (test == undefined){
+		reasons[4] = wrapError("Apportionment ", document.frmFrc.appor.value);
+	}
+	if (test == 0){
+		document.frmFrc.appor.value = "";
+	}
+	if (test > 1){
+		reasons[4] = wrapError("Apportionment ", document.frmFrc.appor.value);
+	}
+	
+	// FLOOR AREA OCCUPIED 
+	msg = document.frmFrc.floorAreaOccupied.value
+	test = isNumber(msg);
+	if (test == false){
+		reasons[5] = wrapError("Constructed area occupied by the tenant", msg);
+	}
+	
+	// FLOOR/PORTIONS: AREA
+	msg = "";
+        for (i = 0; i < document.frmFrc.txtFloorArea.length; i++) {
+	  var tmpFloorArea = document.frmFrc.txtFloorArea[i].value ;
+	  if (tmpFloorArea==''){
+	    document.frmFrc.txtFloorArea[i].value='0.00';
+	    tmpFloorArea = 0;
+	  }
+	  test = isNumber(tmpFloorArea);
+	  if (test == false){
+	    msg = msg + wrapError("The extent of portion ", tmpFloorArea) + nl;
+	  }
+	}
+	reasons[10] = msg;
+	
+	// FLOOR/PORTION: CONSTRUCTION COST
+	msg = "";
+        for (i = 0; i < document.frmFrc.txtFloorCost.length; i++) {
+	  var tmpFloorCost = document.frmFrc.txtFloorCost[i].value ;
+	  if (tmpFloorCost==''){
+	    document.frmFrc.txtFloorCost[i].value='0.00';
+	    tmpFloorCost= 0;
+	  }
+	  test = isNumber(tmpFloorCost);
+	  if (test == false){
+	    msg = msg + wrapError("The cost of portion ", tmpFloorCost) + nl;
+	  }
+	}
+	reasons[11] = msg;
+
+	// BUILDING AGE 
+	msg = document.frmFrc.constAge.value
+	test = isNumber(msg);
+	if (test == false){
+		reasons[6] = wrapError("Age of the building", msg);
+	}
+	
+	
+	// PERCENTAGE TOWARDS BASIC AMENITIES
+	msg = document.frmFrc.amenBasicPercentage.value
+	test = isNumber(msg);
+	if (test == false){
+		reasons[8] = wrapError("The percentage towards basic amenities", msg);
+		} else {
+		if (parseFloat(msg) > 30){
+			reasons[6] = "The percentage towards basic amenities cannot exceed 30%";
+			blank = 1;
+		}
+	}
+	
+	// AMENITIES
+	msg = "";
+        for (i = 0; i < document.frmFrc.amen.length; i++) {
+	  var tmpAmen = document.frmFrc.amen[i].value ;
+	  if (tmpAmen==''){
+	    document.frmFrc.amen[i].value='0.00';
+	    tmpAmen = 0;
+	  }
+	  test = isNumber(tmpAmen);
+	  if (test == false){
+	    msg = msg + wrapError("The value of amenity", tmpAmen) + nl;
+	  }
+	}
+	reasons[9] = msg;
+	if (blank==1){
+	  showReasons();
+	}
+	//alert("form validation done");
+}
+
+function showReasons(){
+	// SHOW REASONS TO USER	
+	msg = reasons[0];
+	for (i=1; i < 101; i++){
+		if (reasons[i] != ""){
+			msg = msg + nl + reasons[i];
+		}		
+	}
+	document.frmFrc.report.value = msg;
+}
+
+function spaceCat(sText, iLen, iJust){
+	// CONCATENATE SPACES TO END OF STRING UPTO CORRECT LENGTH
+	// JUSTIFICATION: 0=LEFT; 1=RIGHT
+	var sSpaces = "";
+	var tmpType;
+	tmpType = typeof sText;
+	if (tmpType == "number"){
+		sText = sText.toString();
+	}
+	if (sText.length < iLen){
+		iLen = iLen - sText.length;
+		for (i=1; i<=iLen; i++){
+			sSpaces = sSpaces + ".";
+		}
+		if (iJust == 0){
+			sText = sText + sSpaces;
+		} 
+		if (iJust == 1){
+			sText = sSpaces + sText;
+		}
+	}
+	
+	return sText;
+}
+
+function addReason(intNumber){
+	lPart = spaceCat(lPart, 55, 0);
+	rPart = spaceCat(rPart, 20, 1);
+	msg = lPart + rPart;
+	reasons[intNumber] = msg;
+	lPart = "";
+	rPart = "";
+	msg = "";
+}
+
+function addHead(intNumber){
+	lPart = spaceCat(lPart, lPartLen, 0);
+	rPart = spaceCat(rPart, rPartLen, 1);
+	msg = lPart + rPart;
+	reasons[intNumber] = msg;
+	lPart = "";rPart = "";msg = "";
+}
+
+function addLine(intNumber, intLength){
+	if (rPart==""){
+		msg = blankCat(lPart, intLength, 0);
+	} else {
+		msg = blankCat(rPart, intLength, 1);
+	}
+	reasons[intNumber] = msg;
+	lPart = "";rPart = "";msg = "";
+}
+	
+		
+function resetForm(){
+	//alert("starting resetForm()...");
+	resetVars();
+	
+	document.frmFrc.siteExtent.value = "";
+	document.frmFrc.siteCostPerUnit.value = "";
+	document.frmFrc.sitePlinth.value = "";
+	document.frmFrc.appor.value = "";
+	document.frmFrc.floorAreaOccupied.value="";
+	document.frmFrc.constCostPerUnit.value="";
+	document.frmFrc.constAge.value="";	
+	document.frmFrc.amenWater.checked=false;	
+	document.frmFrc.amenSanitary.checked=false;
+	document.frmFrc.amenElectricity.checked=false;
+	document.frmFrc.amenBasicPercentage.value="0";
+	
+	for (i=0; i<document.frmFrc.amen.length; i++){
+		document.frmFrc.amen[i].value = "";		
+	} 
+	
+	for (i=0; i < document.frmFrc.txtPortion.length; i++){
+	    document.frmFrc.txtPortion[i].value="";
+	    document.frmFrc.txtFloorArea[i].value="";
+	    document.frmFrc.txtFloorCost[i].value="";
+	}
+	document.frmFrc.report.value="";
+	//alert("done resetForm()");
+}
+function showExample(){
+  // SAMPLE CASES FOR STUDY
+	i = document.frmFrc.selectExample.selectedIndex;
+	msg = document.frmFrc.selectExample.options[i].value;
+        if (msg==0) resetForm();
+	if (msg==1) trySample1();
+	if (msg==2) trySample2();
+	if (msg==3) trySample3();
+	if (msg==4) trySample4();
+        if (msg==99) resetForm();
+}
+function trySample1(){
+	//1993-1-L.W.344 GROUND FLOOR TENANT
+	resetForm();
+	document.frmFrc.bNature.options[0].selected = true;
+	document.frmFrc.bType.options[0].selected=true;
+	document.frmFrc.siteExtent.value = "5000 sq.ft.";
+	document.frmFrc.siteCostPerUnit.value = "60,000/- per ground";
+	document.frmFrc.sitePlinth.value = "2300";
+	document.frmFrc.appor.value = "1/3";
+	document.frmFrc.floorAreaOccupied.value="1239";
+	document.frmFrc.constCostPerUnit.value="80";
+	document.frmFrc.constAge.value="21";	
+	document.frmFrc.amenBasicPercentage.value="0";
+	doCalculation();
+}
+
+function trySample2(){
+	//1993-1-L.W.344 FIRST FLOOR TENANT
+	resetForm();
+	document.frmFrc.bNature.options[0].selected = true;
+	document.frmFrc.bType.options[0].selected=true;
+	document.frmFrc.siteExtent.value = "5000 sq.ft.";
+	document.frmFrc.siteCostPerUnit.value = "60,000/- per ground";
+	document.frmFrc.sitePlinth.value = "2300";
+	document.frmFrc.appor.value = "1/3";
+	document.frmFrc.floorAreaOccupied.value="1239";
+	document.frmFrc.constCostPerUnit.value="80";
+	document.frmFrc.constAge.value="21";	
+	document.frmFrc.amenBasicPercentage.value="0";
+	document.frmFrc.txtPortion[0].value="Terraced Portion";
+	document.frmFrc.txtFloorArea[0].value="1048";
+	document.frmFrc.txtFloorCost[0].value="70";
+	document.frmFrc.txtPortion[1].value="AC Sheet Roof Portion";
+	document.frmFrc.txtFloorArea[1].value="102";
+	document.frmFrc.txtFloorCost[1].value="50";
+	doCalculation();
+}
+function trySample3(){
+	//1988-2-L.W.49
+	resetForm();
+	document.frmFrc.bNature.options[0].selected = true;
+	document.frmFrc.bType.options[0].selected=true;
+	document.frmFrc.siteExtent.value = "899 sq.ft.";
+	document.frmFrc.siteCostPerUnit.value = "60,000/- per ground";
+	document.frmFrc.sitePlinth.value = "899";
+	document.frmFrc.appor.value = "1/2";
+	document.frmFrc.floorAreaOccupied.value="899";
+	document.frmFrc.constCostPerUnit.value="76";
+	document.frmFrc.constAge.value="40";	
+	document.frmFrc.amenBasicPercentage.value="15";
+	doCalculation();
+}
+function trySample4(){
+	//1994-2-L.W.228 EXPECTED RESULT 707
+	//TODO:GET FACTS
+	resetForm();
+	document.frmFrc.bNature.options[1].selected = true;
+	document.frmFrc.bType.options[0].selected=true;
+	document.frmFrc.siteExtent.value = "702 sq.ft.";
+	document.frmFrc.siteCostPerUnit.value = "2,40,000/- per ground";
+	document.frmFrc.sitePlinth.value = "702";
+	document.frmFrc.appor.value = "1/2";
+	document.frmFrc.floorAreaOccupied.value="702";
+	document.frmFrc.constCostPerUnit.value="85";
+	document.frmFrc.constAge.value="60";	
+	document.frmFrc.amenBasicPercentage.value="20";
+	doCalculation();
+}
+
+
+
+///////////////////////////////////////////////////////////////////////
+///-->
+</script>
+
+<h3>Fixation of Fair Rent under Section 4 of the Tamil Nadu Buildings (Lease and Rent Control) Act, 1960 <i>by K. Ramanraj</i></h3>
+
+<form name=frmFrc>
+
+<p><a href=#HowToCompute>How to Compute Fair Rent</a>  
+<br><a href=#HowToUse>How to Use Fair Rent Calculator</a> 
+<br><a href=#StatutoryProvisons>Statutory Provisions</a>
+
+<h4>Enter required particulars and click on "Calculate Fair Rent" Button to view fair rent calculation:</h4>
+<table border=1>
+<tr>
+	<td colspan=2><h3>Nature and Type of Building</h3>
+  <tr><td><a href=#h_bNature>Nature of Building:</a><td>
+    <select name=bNature size=1>
+      <option value=9>Residential Building</option>
+      <option value=12>Non-residential Building</option>
+    </select>
+  <tr><td><a href=#h_bType>Type of Building:</a><td>
+    <select name=bType size=1>
+      <option value=1>Type 1</option>
+      <option value=2>Type 2</option>
+      <option value=3>Type 3</option>
+      <option value=4>Type 4</option>
+    </select>
+  <tr><td colspan=2><h3>Market Value of Site</h3>
+  <tr><td><a href=#h_bExtent>Total extent of site:</a><td><input type=text name=siteExtent size=30 maxlength=30>
+  <tr><td><a href=#h_bMvs>Cost of site per unit:</a><td><input type=text name=siteCostPerUnit size=30 maxlength=30>
+ 
+  <tr><td><a href=#h_bCps>Constructed portion of site in sq.ft.:</a><td><input type=text name=sitePlinth size=25 maxlength=15>
+  <tr><td><a href=#h_bA>Apportionment, if any:</a><td><input type=text name=appor size=25 maxlength=15>
+  <tr><td colspan=2><h3>Cost of Construction of Building</h3>
+  
+
+  <tr><td><a href=#h_bCat>Constructed area occupied <br>by the tenant in sq.ft.:</a><td><input type=text name=floorAreaOccupied size=25 maxlength=15>
+ 
+  <tr><td><a href=#h_bCcps>Construction cost per sq.ft.:</a><td><input type=text name=constCostPerUnit size=25 maxlength=15>
+  
+  <tr><td valign=top><a href=#h_Portion>Floor/Portion Construction Cost Details:</a><br>Give details only if the rates of construction <br>are different for different portions.<td>
+  
+  <table border=1>
+	<tr><td><th>Floor/Portion Description:<th>Area in sq.ft.:<th>Cost per sq.ft.:
+	<tr><td>1.
+		<td><input type=text name=txtPortion size=24 maxlength=40>
+		<td><input type=text name=txtFloorArea size=10 maxlength=10>
+		<td><input type=text name=txtFloorCost size=10maxlength=10>
+	<tr><td>2.
+		<td><input type=text name=txtPortion size=24 maxlength=40>
+		<td><input type=text name=txtFloorArea size=10 maxlength=10>
+		<td><input type=text name=txtFloorCost size=10maxlength=10>
+	<tr><td>3.
+		<td><input type=text name=txtPortion size=24 maxlength=40>
+		<td><input type=text name=txtFloorArea size=10 maxlength=10>
+		<td><input type=text name=txtFloorCost size=10maxlength=10>
+	<tr><td>4.
+		<td><input type=text name=txtPortion size=24 maxlength=40>
+		<td><input type=text name=txtFloorArea size=10 maxlength=10>
+		<td><input type=text name=txtFloorCost size=10maxlength=10>
+	<tr><td>5.
+		<td><input type=text name=txtPortion size=24 maxlength=40>
+		<td><input type=text name=txtFloorArea size=10 maxlength=10>
+		<td><input type=text name=txtFloorCost size=10maxlength=10>
+</table>
+  <tr><td><a href=#h_bAge>Age of the Building in years:</a><td><input type=text name=constAge size=25 maxlength=5>
+  <tr><td valign=top rowspan=2><a href=#h_bBasicAmen>Basic Amenities:</a><td>
+         <input type=checkbox name=amenWater onClick="modifyBasicAmenRate(document.frmFrc.amenWater.checked)">Internal Water Supply<br>
+	 <input type=checkbox name=amenSanitary onClick="modifyBasicAmenRate(document.frmFrc.amenSanitary.checked)">Sanitary Installation<br>
+	 <input type=checkbox name=amenElectricity onClick="modifyBasicAmenRate(document.frmFrc.amenElectricity.checked)">Electrical Installation
+	<tr><td>Add <input type=text name=amenBasicPercentage size=3 maxlength=2 value=0>% towards Basic Amenities
+  <tr><td><h3><a href=#h_bSIAmen>Value of Amenities provided:</a></h3><td colspan=2>Rs. P.
+  <tr><td>1. Air Conditioner<td><input type=text name=amen size=25 maxlength=15>
+  <tr><td>2. Lift<td><input type=text name=amen size=25 maxlength=15>
+  <tr><td>3. Water-cooler<td><input type=text name=amen size=25 maxlength=15>
+  <tr><td>4. Electrical heater<td><input type=text name=amen size=25 maxlength=15>
+  <tr><td>5. Frigidaire<td><input type=text name=amen size=25 maxlength=15>
+  <tr><td>6. Mosaic flooring<td><input type=text name=amen size=25 maxlength=15>
+  <tr><td>7. Side dadoos<td><input type=text name=amen size=25 maxlength=15>
+  <tr><td>8. Compound walls<td><input type=text name=amen size=25 maxlength=15>
+  <tr><td>9. Garden<td><input type=text name=amen size=25 maxlength=15>
+  <tr><td>10.Over-head tank<td><input type=text name=amen size=25 maxlength=15>
+  <tr><td>11.Electric pump<td><input type=text name=amen size=25 maxlength=15>
+  <tr><td>12.Playground<td><input type=text name=amen size=25 maxlength=15>
+  <tr><td>13.Badminton Court<td><input type=text name=amen size=25 maxlength=15>
+  <tr><td>14.Sun-breakers<td><input type=text name=amen size=25 maxlength=15>
+  <tr><td>15.Amenity u/s. 4(4)<td><input type=text name=amen size=25 maxlength=15>
+  <tr><td>16.Usufructs<td><input type=text name=amen size=25 maxlength=15>
+  <tr><td>17.Special Architecture<td><input type=text name=amen size=25 maxlength=15>
+  <tr><td>18.Others<td><input type=text name=amen size=25 maxlength=15>
+  </table>
+	<input type=button name=btnCalculate value="Calculate Fair Rent" onclick="doCalculation()">
+	<input type=button name=btnReset value="Reset Form" onclick="resetForm()">
+	
+<a href=#Samples>Try sample calculation based on:</a>
+<select name=selectExample size=1 onChange="showExample()">
+                <option value=0>--Select an example based on a reported case--</option>
+		<option value=1>1993-1-L.W.344 :Ground Floor Tenant</option>
+		<option value=2>1993-1-L.W.344 :First Floor Tenant </option>
+		<option value=3>1988-1-L.W.49</option>
+                <option value=99>Reset form to do fresh calculation</option>
+		<!--TODO//GET FACTS//<option value=4>1994-2-L.W.228</option> -->
+	</select>
+</p>
+
+<h5>Fair Rent Calculation:</h5>
+<textarea name=report wrap=virtual cols=80 rows=18></textarea>
+</form>
+<hr>
+<h2><a name=HowToUse></a>How to use Fair Rent Calculator:</h2>
+This is an user friendly open source free software script that aids in the calculation and fixation of fair rent as per the provisions of the Tamil Nadu Buildings (Lease and Rent Control) Act, 1960.  The relevant statutory provisions and the gist of important cases relating to computation of fair rent are also included here.  A brief description on how to use the above form to compute fair rent follows:  
+<ul>
+<li><a name=h_bNature></a><b>Nature of Building:</b>
+	Select to indicate if the building is put to residential or non-residential use.
+<li><a name=h_bType></a><b>Type of Building:</b>
+	Indicate the type of construction of the building.  <a name=tnblra_sII>Schedule II</a> of the Act fixes the depreciation applicable to the four types of building construction covered by the Act.
+<li><a name=h_bExtent></a><b>Total extent of site:</b>
+  Total extent of the site may be given in sq.ft., sq.m., grounds, acres, cents or square yards. The extent given is converted into square feet by the fair rent calculator. The following conversion table is used to convert values in other units to sq.ft.
+  <table>
+  <tr><td>1 ground <td>=<td>2400 sq.ft.
+  <tr><td>1 square metre<td>=<td>10.76 sq.ft.
+  <tr><td>1 acre<td>=<td>43560 sq.ft.
+  <tr><td>1 cent<td>=<td>435.6 sq.ft.
+  <tr><td>1 square yard<td>=<td>9 sq.ft.
+  </table>
+  All the following are valid entries in the total extent of site input box:
+  <ul>
+  	<li>2500 sq.ft.
+  	<li>1 ground 100 sq.ft.
+  	<li>3 grounds
+  	<li>2 acres
+  	<li>101 sq.m.
+  	<li>21 cents
+  	<li>65 sq.yards.
+  	<li>3200 [sq.ft.]
+  </ul>
+  If no units are specified, it is presumed to be in sq.ft.
+<li><a name=h_bMvs></a><b>Market value of site:</b>
+	The market value of the site may be given as  rate per sq.ft., sq.m., grounds, acres, cents or square yard. The rate given is converted to the rate for each square feet and used in the calcuation.	All the following are valid entries:
+		<ul>
+		  <li>25 per sq.ft.
+		  <li>60,000 per ground
+		  <li>300 per sq.m.
+		 </ul>
+<p>If no units are specified, the rate is presumed to be given per sq.ft.
+<li><a name=h_bCcps></a><b>Constructed portion of site in sq.ft.</b>
+Enter the constructed portion of the site, i.e. the plinth area, in sq.ft. Values in other units are not permissible in this input box.  
+<li><a name=h_bA></a><b>Apportionment:</b>
+If the tenant occupies only a portion of the building, then enter the apportionment in the format x/y, where x is the constructed portion occupied by the tenant, and y is the total constructed portion available for occupation in the building, in all the floor levels. Apportionment can also be indicated as a fraction greater than zero and less than one. All the following are valid apportionment ratios:
+
+	
+		<table>
+				
+		<tr><td valign=top><ul><li>1/2</ul><td>This means 50% of the building is occupied by the tenant.
+		<tr><td valign=top><ul><li>1/3</ul><td>This indicates that one third of the building is occupied by the tenant.
+		<tr><td valign=top><ul><li>0.5</ul><td>This is the same as entering 1/2, indicating that half of the building is in occupation of the tenant.
+		<tr><td valign=top><ul><li>600/1200</ul><td>Tenant is occupying 600 sq.ft. of the available 1200 sq.ft.  This is the same as specifying 1/2 or 0.5
+		<tr><td valign=top><ul><li>1/1</ul><td>If the whole building is in the occupation of a single tenant no apportionment is necessary and can be indicated as 1/1.  Instead, the apportionment box may be left blank in this case.
+		
+		</table>
+		
+<li><a name=h_bCat></a><b>Constructed area occupied by the tenant in sq.ft.</b>
+Enter the constructed area occupied by the tenant in sq.ft. only.  Values in other units are not permissible.  If there are two floors in the occupation of the tenant in a building, and each floor measures 300 sq.ft. enter 600 sq.ft. in the input box. If various portions are occupied in various levels, under the same tenancy, enter the sum of the portions occupied in the input box.
+<li><a name=h_bCcps></a><b>Construction cost per sq.ft.</b>
+Give the cost of construction for the building per sq.ft. as on the date of application for fixation of fair rent.  Rates in other units of area are not admissible in this input box.
+<li><a name=h_Portion></a><b>Floor/Portion Construction Cost Details:</b>In most cases, it may be sufficient to give the Constructed area occuped by the tenant in sq.ft. and the cost of construction per sq.ft.  In some cases, however, there may be a mix of construction types, and hence it may become necessary to give details of the different portions and their respective costs of construction.  For instance, though a building may be of bricks and mortar the terrace may have a thatti portion whose construction cost may be only Rs.5/- per square feet.  If this section is filled up, then the total area is calculated and filled in the Constructed area occupied by the tenant box, and the average cost of construction is filled in the cost of construction per sq.ft. box, automatically.  
+<li><a name=h_bAge></a><b>Age of the Building in years</b>
+Enter the age of the building in years.  Please note that the provisions of Section 4 are not applicable to new buildings aged less than 5 years.
+<li><a name=h_bBasicAmen></a><b>Basic Amenities</b>
+Check on the basic amenities provided in the building.  By default, the basic amenities percentage total increases by 5% towards each amenity provided.  However, you can increase or decrease the total percentage to a figure between 0% and the maximum allowance of 30%. 
+<li><a name=h_bSIAmen></a><b>Schedule I Amenities</b>
+The value of the Schedule I amenites can be entered in the input boxes provided.  The market value of any excess portion of the site that is treated as an amenity under Section 4(4) is automatically computed and displayed under item 14 of the list.
+<li><b>Calculate Fair Rent</b>
+After entering the required particulars, click on the Calculate Fair Rent button.  If any invalid entries were found, the reasons that caused the calculation to fail are listed.  If the particulars are in valid format, then the monthly rent is computed and displayed in the "Fair Rent Calculation" report.  A memo of calculation is generated showing the reasoning by the script in computing fair rent.
+<p>Click on the "Reset Form" button to reset the form, and do a fresh calculation.
+</ul>
+
+<a name=Samples></a><h3>Sample Calculations</h3>A few sample cases have been given to test and try out this script.  Selecting an example from the given list loads the form with facts and figures based on the reported case.
+<p>The fixation of fair rent in the reported cases and the memo of calculation in this script will match only more or less, due to rounding off numbers to two decimal places in this script.
+
+
+</ul>
+<hr>
+<a name=HowToCompute><h2>Computation of Fair Rent:</h2>
+
+<p>The Tamil Nadu Buildings (Lease and Rent Control) Act, 1960, provides for the fixation of fair rent for both residential and non-residential buildings in areas where the Act extends. The fair rent for residential buildings is fixed at nine per cent of the gross return per annum on the total cost of the building, and for non-residential buildings, fair rent is fixed at twelve percent of the gross return per annum on the total cost of the building.
+
+<p>The total cost of the building consists of:
+<ol>
+	<li>  Market value of the site in which the building is constructed.
+	<li>  Cost of construction of the building.
+	<li>  Cost of provision of amenities provided.
+</ol>
+<p>However, the actual values are subject to the provisos listed under Section 4 of the Act, and the artificial values determined as per the Section, form the basis for fixing fair rent. The complex sentence structures used in Section 4 and the Schedules, makes a reading of the leading precedents on the subject of fixation of fair rent mandatory.  The relevant statutory provisions have also been extracted <a href=#tnblra_s4>below</a> for reference. The computation of the total cost of a building and the determination of its fair rent is discussed here. 
+
+<h3>1)  Market Value of Site:</h3>
+
+<p>In case of buildings with meagre vacant space, the actual market value is taken to be the market value of the site.  Where the vacant portion of the site is above fifty percent of the plinth area, the market value of the site is limited to the market value of the plinth area + 50 percent of the plinth area.  The market value of the remaining portion is treated as an amenity under Schedule I.
+
+<p>The abstruse language used in the proviso to Section 4(4) was clarified in 94 L W. 21 <i>[Chelladurai alias V.N. Veeman Pillai v. Paramanand Jindal], </i> wherein Ratnam J., held: 
+<blockquote>"This proviso enacts an artificial rule to fix the market value of the site in which the building is constructed. For that purpose the Controller should take into account that portion of the site on which the building is constructed and a portion of upto 50% thereof the vacant land, if any, appurtenant to such building.  The effect of this proviso is that in order to arrive at the market value of the site in which the building is constructed, it is not only the actual area over which the building is constructed that should be taken into account, but also a portion upto 50% thereof of the vacant land.  The use of the word 'thereof' is not without significance and it means 'of that' or 'from that'.  It is rather unfortunate that the language employed in the proviso is not very happy, nay, it is inelegant, but the intendment of the proviso is that while enacting an artificial rule for the purpose of fixing the extent of the site whose market value has to be ascertained to be included in the total cost of construction, it further imposes a ceiling as it were, on that extent which would go to make up the site whose market value has to be ascertained."</blockquote>
+
+<p>Applying the above principle to the facts of the case it was held: "In the light of the above interpretation of the proviso, in the instant case, it is found that the Appellate Authority has taken into account only that portion of the site on which the building is constructed, viz., 6336 sq.ft. and had added 50% to the same of the site on which the building is constructed and thus arrived at 9495 sq.ft. as the area, the market value of which has to be determined.  There is absolutely no error in this method which has been adopted by the Appellate Authority, especially when the total extent of the property is 22,0575 sq.ft. and the portion of the site on which the building has actually been constructed is only 6330 sq.ft."
+
+<p>The above decision was over ruled by the Division Bench in 96 L.W. 487 [<i>K.Kaliammal v. Athi V. Ramachandran</i>]. Subsequently, in 1989-1-L.W.137 [<i>Lodha H.C. v. Dr. C. Ranganathan etc</i>]  (Full Bench of Nainar Sundaram, S.T. Ramalingam and Bellie JJ) over ruled the Division Bench decision in 96 LW 487, approving the ruling  in 94 L W. 21 [<i>Chelladurai alias V.N. Veeman Pillai v. Paramanand Jindal (Ratnam J)</i>].   
+
+<h4><i>Apportionment:</i></h4>
+<p>The provisions are silent on the apportionment of the market value of site, where a tenant occupies only a portion of the building.  The question of apportioning the market value of the site, has been considered by our Courts on several occasions.  The following case comprehensively clarifies the method to be adopted in computing the fair rent in such cases.
+
+<p> In 1993-1-L.W. 344 [<i>M. Radhakrishna Rao v. A.B. Ahmed Basha and another (Srinivasan, J.)</i>]  the landlord Radhakrishna Rao filed petitions for fixing the fair rent in respect of two flats in the ground floor occupied by his tenant Ahmed Basha, and two flats in the first floor occupied by another tenant Manoharlal Sablok.  The landlord himself occupied the remaining portion of the building. Thus the complicated question of how the market value of  the site should be apportioned among the tenants arose for consideration.
+
+<p>Justice M. Srinivasan, held: 
+<blockquote>"One tenant cannot be mulcted with the liability for market value of the site in which the building is constructed, taken as a whole.  Necessarily, the market value of the site in which the building is constructed has to be distributed and apportioned among the tenants.  If it is taken floor wise, that will lead to an artificiality, in the case of there being more tenant in each floor.  If it is taken on the basis of the plinth area of each of the portions, that will also lead to an artificiality in the case of more storeys than one.  In both cases, undue advantage will be gained by the landlord.  He cannot be entitled to charge each tenant occupying only a small portion of the building with fair rent calculated on the basis of the market value of the plinth area of the entire building + one half thereof.  In my opinion, the most equitable way of construing the section and applying the formula evolved by the Full Bench is to distribute or apportion the value of the site occupied by the building as a whole + one half thereof equally among the tenements."</blockquote>
+
+<p>The judgment covers most aspects involved in the fixation of fair rent in detail, and forms the basis for this script.  The fair rent particulars in the above case are provided as samples along with this script.
+
+<h3>2) Cost of Construction of the Building:</h3>
+
+	<a href=#tnblra_s4(5)>Section 4(5)</a> and <a href=#tnblra_sII>Schedule II</a> deal with the determination of the cost of construction of the building.  The cost of construction is determined on the basis of the Tamil Nadu Public Works Department Mini Technical Handbook. See 1988-2-L.W. 49 [<i>Collector of Madras, Accommodation Wing, Madras v. A.N. Gajendran</i>], wherein M.N. Chandurkar, C.J.,  determined the cost of construction of a building based on the Tamil Nadu Public Words Department Mini Technical Handbook.
+
+<h3>3) Cost of provision of Amenities:</h3>
+
+	<a href=#tnblra_sI>Schedule I</a> lists the amenities that are usually provided in buildings.  The proviso to <a href=#tnblra_s4(4)>Section 4(4)</a> limits the cost of provision of amenities while fixing the fair rent for the building.
+	
+<hr>
+<a name=tnblra_s4></a><a name=StatutoryProvisions><h2>Extract of statutory provisions from the Tamil Nadu Buildings (Lease and Rent Control) Act, 1960, dealing with the computation of fair rent:</h2>	
+
+<h3>Section 4:  Fixation of Fair Rent<sup><a href=#fn1>1</a></sup>
+</h3>
+    <p><a name=tnblra_s4(1)></a>(1)  The Controller shall on application made by the tenant or the landlord of a building and after holding such enquiry as he thinks fit, fix the fair rent for such building in accordance with the principles set out in the following sub-sections.
+
+    <p><a name=tnblra_s4(2)></a>(2)  The fair rent for any residential building shall be nine per cent gross return per annum on the total cost of such building.
+
+    <p><a name=tnblra_s4(3)></a>(3)  The fair rent for any non-residential building shall be twelve percent gross return per annum on the total cost of such building.
+
+    <p><a name=tnblra_s4(4)></a>(4)  The total cost referred to in sub-section (2) and sub-section (3) shall consist of the market value of the site in which the building is constructed, the cost of construction of the building and the cost of provision of any one or more of the amenities specified in Schedule I as on the date of application for fixation of fair rent:   
+
+            <p>Provided that while calculating the market value of the site in which the building is constructed, the Controller shall take into account only that portion of the site on which the building is constructed and of a portion up to fifty per cent, thereof of the vacant land, if any, appurtenant to such building, the excess portion of the vacant land, being treated as amenity:
+
+            <p>Provided further that the cost of provision of amenities specified in Schedule I shall not exceed-
+
+                <p>(i)  in the case of any residential building, fifteen per cent; and
+
+                <p>(ii)  in the case of any non-residential building, twenty-five per cent,
+
+of the cost of site in which the building is constructed, and the cost of construction of the building as determined under this section.
+
+    <p><a name=tnblra_s4(5)></a>(5)(a)  The cost of construction of the building including cost of internal water-supply, sanitary and electrical installations shall be determined with due regard to the rates adopted for the purpose of estimation by the Public Works Department of the Government for the area concerned.  The Controller may, in appropriate cases, allow or disallow an amount not exceeding thirty per cent of the cost of construction having regard to the nature of construction of the building. 
+
+        <p>(b)  The Controller shall deduct from the cost of construction determined in the manner specified in clause (a), depreciation, calculated at the rates specified in Schedule II.
+
+<h3><a name=tnblra_sI></a>Schedule I &nbsp;&nbsp;<sup><a href=#fn2>2</a></sup></h3>
+(<i>See</i> Section 4)
+<h4>AMENITIES</h4>
+
+ <p>(1)    Air-conditioner.
+ <p>(2)    Lift.
+ <p>(3)    Water-cooler.
+ <p>(4)    Electrical heater.
+ <p>(5)    Frigidaire.
+ <p>(6)    Mosaic flooring.
+ <p>(7)    Side dadoos.
+ <p>(8)    Compound walls.
+ <p>(9)    Garden.
+ <p>(10)  Over-head tank for water-supply.
+ <p>(11)  Electric pump and motor for water-supply.
+ <p>(12)  Playground.
+ <p>(13)  Badminton and Tennis courts.
+ <p>(14)  Sun-breakers.
+ <p>(15)  Amenity referred to in the first proviso to sub-section (4) of section 4.
+ <p>(16)  Usufructs, if any, enjoyed by the tenant.
+ <p>(17)  Features of special architectural interest.
+
+<a name=tnblra_sII></a><h3>Schedule II</h3>
+(<i>See</i> Section 4)
+<h4>Type of buildings.</h4>
+<h5>Rates of Depreciation</h5>
+<table width=60% border=1>
+<tr valign=top><td valign=top>
+1.<td>Buildings built in lime mortar and in which teak has been used throughout
+<td>
+1.0 per cent.
+<tr valign=top><td>
+2.<td>Buildings built partly of brick in lime mortar and partly of brick in mud and in which teak has been used
+<td>
+1.5 per cent.
+<tr valign=top><td>
+3.<td>Buildings built in brick and mud in which country-wood has been used
+<td>
+2.0 per cent.
+<tr valign=top><td>
+4.<td>Buildings which are inferior to those of class 3 with brick in mud unplastered walls and mud floors and in which cheap country-wood has been used
+<td>
+4.0 per cent.
+</table>
+<p><b><i>Explanation.-</i></b>
+<p>(1)  The depreciation shall be calculated for each year on the net value arrived at after deducting the amount of depreciation for the previous year.
+
+<p>(2)  The amount of depreciation shall in no case be less than ten per cent of the cost of construction of the building.
+
+<p>(3)  The amount of depreciation of a building aged 'n' years is calculated by using the formula-<br>
+<img src=frc_dep_formula.png alt="P = A ((100 - r)/100)^n"><br>
+Where 
+A = total cost of construction of the building.
+r = rate of depreciation per annum.
+n =  age of the building (i.e., the number of years).
+P =  the final depreciated value of the building.
+
+     The amount of depreciation will be equal to 'A' - 'P' subject to a minimum of ten per cent of 'A'.
+     
+
+<p>____________________</p>
+
+<h3>Notes:</h3>         
+<p><a name=fn1>[<sup>1</sup>]</a> Section 4, as substituted by Act 23 of 1973,         
+<p><a name=fn2>[<sup>2</sup>]</a> Schedules I and II added by Tamil Nadu Act XXIII of 1973.
+
+<hr>
+
+<p>Copyright (C) 2001  <a href=mailto:ramanraj.k@gmail.com>K. Ramanraj</a>
+<p>This program is free software; you can redistribute it and/or modify
+<br>it under the terms of the <a href=../computing/gpl_v2.html>GNU General Public License</a> as published by
+<br>the <a href=http://www.fsf.org>Free Software Foundation</a>; either version 2 of the License, or
+<br>(at your option) any later version.
+<br>
+<p>This program is distributed in the hope that it will be useful,
+<br>but WITHOUT ANY WARRANTY; without even the implied warranty of
+<br>MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+<br><a href=../computing/gpl_v2.html>GNU General Public License</a> for more details.
+<br>
+<p>You should have received a copy of the <a href=../computing/gpl_v2.html>GNU General Public License</a>
+<br>along with this program; if not, write to the <a href=http://www.fsf.org>Free Software
+<br>Foundation, Inc.,</a> 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+
+</html>
